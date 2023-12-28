@@ -2163,11 +2163,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "K:\\2024\\AHT\\AHTAPI\\AHTAPI.csproj",
+      "projectUniqueName": "J:\\2024\\AHT\\WebApiAHT\\AHTAPI.csproj",
       "projectName": "AHTAPI",
-      "projectPath": "K:\\2024\\AHT\\AHTAPI\\AHTAPI.csproj",
+      "projectPath": "J:\\2024\\AHT\\WebApiAHT\\AHTAPI.csproj",
       "packagesPath": "C:\\Users\\Admin\\.nuget\\packages\\",
-      "outputPath": "K:\\2024\\AHT\\AHTAPI\\obj\\",
+      "outputPath": "J:\\2024\\AHT\\WebApiAHT\\obj\\",
       "projectStyle": "PackageReference",
       "configFilePaths": [
         "C:\\Users\\Admin\\AppData\\Roaming\\NuGet\\NuGet.Config",
