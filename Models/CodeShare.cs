@@ -1,0 +1,7 @@
+﻿namespace AHTAPI.Models
+{
+    public class CodeShare
+    {
+        public string? LineCode { get; set; }
+    }
+}
