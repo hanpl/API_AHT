@@ -79,7 +79,7 @@ namespace AHTAPI.Repositories
         }
         #endregion
         //Http Get By Gate Number
-        #region Get All # Done 
+        #region Get By Name
         public List<DigitalSignage> GetDigitalByGateNumber( string gate, string leftright)
         {
             List<DigitalSignage> digitalSignages = new List<DigitalSignage>();
@@ -88,6 +88,21 @@ namespace AHTAPI.Repositories
             foreach (DataRow row in data.Rows)
             {
                 var Mode = (CheckModeEgate(row["LineCode"].ToString(), row["Gate"].ToString()) == true ? "Yes" : "No");
+                var Live = row["LineCode"].ToString() + "_" + (Mode == "Yes" ? "EGATE" : "NOEGATE") + "_" + row["Remark"].ToString() + "_" + row["LeftRight"].ToString();
+                Console.WriteLine("Gate Doing..." + row["Name"].ToString() + " - " + row["LineCode"].ToString() + " - " + row["Remark"].ToString() + " - " + Mode + "  " + Live);
+                if ((row["Live"].ToString() == Live) && (row["Mode"].ToString() == Mode) && (row["Mcdt"].ToString() == row["TimeMcdt"].ToString()))
+                {
+                    Console.WriteLine("Gate not yet change...");
+                    //Bổ sung code gửi signalr đến  client tương ứng
+                }
+                else
+                {
+                    if (UpdateGateToDoing(Convert.ToInt32(row["Id"]), Live, row["Remark"].ToString(), Mode, row["LineCode"].ToString(), row["FlightNo"].ToString(), row["Mcdt"].ToString()))
+                    {
+                        Console.WriteLine("UpdateGateToDoing");
+                        //Bổ sung code gửi signalr đến  client tương ứng
+                    }
+                }
                 digitalSignage = new DigitalSignage
                 {
                     LineCode = row["LineCode"].ToString(),
@@ -185,6 +200,40 @@ namespace AHTAPI.Repositories
                 catch (Exception ex)
                 {
                     throw;
+                }
+                finally { connection.Close(); }
+            }
+        }
+        #endregion
+
+        #region Update Data Gate
+        public bool UpdateGateToDoing(int id, string live, string remark, string mode, string iata, string namelinecode, string timemcdt)
+        {
+            string query = "UPDATE [MSMQFLIGHT].[dbo].[AHT_DigitalSignage] SET Live =@Live, Remark =@Remark, " +
+                "Mode = @Mode, Iata =@Iata, NameLineCode = @NameLineCode, TimeMcdt =@TimeMcdt WHERE Id = @Id";
+            DataTable dataTable = new DataTable();
+            //string connectionString = "Data Source=172.17.2.38;Initial Catalog=MSMQFLIGHT;Persist Security Info=True;User ID=sa;Password=AHT@2019";
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                try
+                {
+                    connection.Open();
+                    using (SqlCommand command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@Live", live);
+                        command.Parameters.AddWithValue("@Remark", remark);
+                        command.Parameters.AddWithValue("@Mode", mode);
+                        command.Parameters.AddWithValue("@Iata", iata);
+                        command.Parameters.AddWithValue("@NameLineCode", namelinecode);
+                        command.Parameters.AddWithValue("@TimeMcdt", timemcdt);
+                        command.Parameters.AddWithValue("@Id", id);
+                        command.ExecuteNonQuery();
+                    }
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    return false;
                 }
                 finally { connection.Close(); }
             }

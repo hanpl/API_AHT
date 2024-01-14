@@ -18,14 +18,15 @@ namespace AHTAPI.Controllers
         [HttpGet]
         public IEnumerable<DigitalSignage> GetAllGateInfor()
         {
-            return digitalSignageRepository.GetGateInfor();
+            var data = digitalSignageRepository.GetGateInfor();
+            return data;
         }
 
         [HttpGet("{Name}/{Gate}")]
         public IEnumerable<DigitalSignage> GetDigitalById(string Name,string Gate)
         {
-            var product = digitalSignageRepository.GetDigitalByGateNumber(Name, Gate);
-            return product;
+            var data = digitalSignageRepository.GetDigitalByGateNumber(Name, Gate);
+                return data;
         }
     }
 }
