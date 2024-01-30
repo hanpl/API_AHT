@@ -85,51 +85,64 @@ namespace AHTAPI.Repositories
             List<DigitalSignage> digitalSignages = new List<DigitalSignage>();
             DigitalSignage digitalSignage;
             var data = getDigitalByGateNumber(gate, leftright);
-            foreach (DataRow row in data.Rows)
+            Console.WriteLine(data.Rows.Count.ToString());
+            if (data.Rows.Count == 0)
             {
-                var Mode = (CheckModeEgate(row["LineCode"].ToString(), row["Gate"].ToString()) == true ? "Yes" : "No");
-                var Live = row["LineCode"].ToString() + "_" + (Mode == "Yes" ? "EGATE" : "NOEGATE") + "_" + row["Remark"].ToString() + "_" + row["LeftRight"].ToString();
-                Console.WriteLine("Gate Doing..." + row["Name"].ToString() + " - " + row["LineCode"].ToString() + " - " + row["Remark"].ToString() + " - " + Mode + "  " + Live);
-                if ((row["Live"].ToString() == Live) && (row["Mode"].ToString() == Mode) && (row["Mcdt"].ToString() == row["TimeMcdt"].ToString()))
+                if (UpdateGateToAHT(gate, leftright, "AHT", "", "No", "", "", ""))
                 {
-                    Console.WriteLine("Gate not yet change...");
-                    //Bổ sung code gửi signalr đến  client tương ứng
+                    return digitalSignages;
                 }
-                else
+                return digitalSignages;
+            }
+            else
+            {
+                foreach (DataRow row in data.Rows)
                 {
-                    if (UpdateGateToDoing(Convert.ToInt32(row["Id"]), Live, row["Remark"].ToString(), Mode, row["LineCode"].ToString(), row["FlightNo"].ToString(), row["Mcdt"].ToString()))
+                    var Mode = (CheckModeEgate(row["LineCode"].ToString(), row["Gate"].ToString()) == true ? "Yes" : "No");
+                    var Live = row["LineCode"].ToString() + "_" + (Mode == "Yes" ? "EGATE" : "NOEGATE") + "_" + row["RemarkNo"].ToString() + "_" + row["LeftRight"].ToString();
+                    Console.WriteLine("Gate Doing..." + row["Name"].ToString() + " - " + row["LineCode"].ToString() + " - " + row["RemarkNo"].ToString() + " - " + Mode + "  " + Live);
+                    if ((row["Live"].ToString() == Live) && (row["Mode"].ToString() == Mode) && (row["Mcdt"].ToString() == row["TimeMcdt"].ToString()))
                     {
-                        Console.WriteLine("UpdateGateToDoing");
+                        Console.WriteLine("Gate not yet change...");
                         //Bổ sung code gửi signalr đến  client tương ứng
                     }
+                    else
+                    {
+                        if (UpdateGateToDoing(Convert.ToInt32(row["Id"]), Live, row["RemarkNo"].ToString(), Mode, row["LineCode"].ToString(), row["FlightNo"].ToString(), row["Mcdt"].ToString()))
+                        {
+                            Console.WriteLine("UpdateGateToDoing");
+                            //Bổ sung code gửi signalr đến  client tương ứng
+                        }
+                    }
+                    digitalSignage = new DigitalSignage
+                    {
+                        LineCode = row["LineCode"].ToString(),
+                        FlightNo = row["FlightNo"].ToString(),
+                        RemarkNo = row["RemarkNo"].ToString(),
+                        Mcdt = row["Mcdt"].ToString(),
+                        Id = Convert.ToInt32(row["Id"]),
+                        Name = row["Name"].ToString(),
+                        Ip = row["Ip"].ToString(),
+                        Location = row["Location"].ToString(),
+                        Live = row["Live"].ToString(),
+                        Remark = row["Remark"].ToString(),
+                        Status = row["Status"].ToString(),
+                        LeftRight = row["LeftRight"].ToString(),
+                        GateChange = row["GateChange"].ToString(),
+                        Mode = row["Mode"].ToString(),
+                        Auto = row["Auto"].ToString(),
+                        Iata = row["Iata"].ToString(),
+                        NameLineCode = row["NameLineCode"].ToString(),
+                        TimeMcdt = row["TimeMcdt"].ToString(),
+                        ConnectionId = row["ConnectionId"].ToString(),
+                        LiveAuto = row["LiveAuto"].ToString(),
+                        ModeNow = Mode,
+                    };
+                    digitalSignages.Add(digitalSignage);
                 }
-                digitalSignage = new DigitalSignage
-                {
-                    LineCode = row["LineCode"].ToString(),
-                    FlightNo = row["FlightNo"].ToString(),
-                    RemarkNo = row["RemarkNo"].ToString(),
-                    Mcdt = row["Mcdt"].ToString(),
-                    Id = Convert.ToInt32(row["Id"]),
-                    Name = row["Name"].ToString(),
-                    Ip = row["Ip"].ToString(),
-                    Location = row["Location"].ToString(),
-                    Live = row["Live"].ToString(),
-                    Remark = row["Remark"].ToString(),
-                    Status = row["Status"].ToString(),
-                    LeftRight = row["LeftRight"].ToString(),
-                    GateChange = row["GateChange"].ToString(),
-                    Mode = row["Mode"].ToString(),
-                    Auto = row["Auto"].ToString(),
-                    Iata = row["Iata"].ToString(),
-                    NameLineCode = row["NameLineCode"].ToString(),
-                    TimeMcdt = row["TimeMcdt"].ToString(),
-                    ConnectionId = row["ConnectionId"].ToString(),
-                    LiveAuto = row["LiveAuto"].ToString(),
-                    ModeNow = Mode,
-                };
-                digitalSignages.Add(digitalSignage);
+                return digitalSignages;
             }
-            return digitalSignages;
+            
         }
         public bool CheckModeEgate(string linecode, string gate)
         {
@@ -227,6 +240,65 @@ namespace AHTAPI.Repositories
                         command.Parameters.AddWithValue("@NameLineCode", namelinecode);
                         command.Parameters.AddWithValue("@TimeMcdt", timemcdt);
                         command.Parameters.AddWithValue("@Id", id);
+                        command.ExecuteNonQuery();
+                    }
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    return false;
+                }
+                finally { connection.Close(); }
+            }
+        }public bool UpdateGateToAHT(string gate, string leftright, string live, string remark, string mode, string iata, string namelinecode, string timemcdt)
+        {
+            string query = "UPDATE [MSMQFLIGHT].[dbo].[AHT_DigitalSignage] SET Live =@Live, Remark =@Remark, " +
+                "Mode = @Mode, Iata =@Iata, NameLineCode = @NameLineCode, TimeMcdt =@TimeMcdt WHERE Name = @Id AND LeftRight = @LeftRight";
+            DataTable dataTable = new DataTable();
+            //string connectionString = "Data Source=172.17.2.38;Initial Catalog=MSMQFLIGHT;Persist Security Info=True;User ID=sa;Password=AHT@2019";
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                try
+                {
+                    connection.Open();
+                    using (SqlCommand command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@Live", live);
+                        command.Parameters.AddWithValue("@Remark", remark);
+                        command.Parameters.AddWithValue("@Mode", mode);
+                        command.Parameters.AddWithValue("@Iata", iata);
+                        command.Parameters.AddWithValue("@NameLineCode", namelinecode);
+                        command.Parameters.AddWithValue("@TimeMcdt", timemcdt);
+                        command.Parameters.AddWithValue("@Id", gate);
+                        command.Parameters.AddWithValue("@LeftRight", leftright);
+                        command.ExecuteNonQuery();
+                    }
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    return false;
+                }
+                finally { connection.Close(); }
+            }
+        }
+        #endregion#region Update Data Gate
+
+        #region Update Digital By column Name
+        public bool UpdateDigitalByColumnName(string Name, string leftRight, string columnName, string des)
+        {
+            string query = "UPDATE [MSMQFLIGHT].[dbo].[AHT_DigitalSignage] SET "+ columnName + " = '"+des+"', Work = 'Yes' WHERE Name = @Name AND LeftRight = @LeftRight ";
+            DataTable dataTable = new DataTable();
+            //string connectionString = "Data Source=172.17.2.38;Initial Catalog=MSMQFLIGHT;Persist Security Info=True;User ID=sa;Password=AHT@2019";
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                try
+                {
+                    connection.Open();
+                    using (SqlCommand command = new SqlCommand(query, connection))
+                    {
+                        command.Parameters.AddWithValue("@Name", Name);
+                        command.Parameters.AddWithValue("@LeftRight", leftRight);
                         command.ExecuteNonQuery();
                     }
                     return true;

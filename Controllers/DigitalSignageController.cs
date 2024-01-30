@@ -22,11 +22,22 @@ namespace AHTAPI.Controllers
             return data;
         }
 
-        [HttpGet("{Name}/{Gate}")]
-        public IEnumerable<DigitalSignage> GetDigitalById(string Name,string Gate)
+        [HttpGet("{Name}/{LeftRight}")]
+        public IEnumerable<DigitalSignage> GetDigitalById(string Name,string LeftRight)
         {
-            var data = digitalSignageRepository.GetDigitalByGateNumber(Name, Gate);
+            var data = digitalSignageRepository.GetDigitalByGateNumber(Name, LeftRight);
                 return data;
+        }
+
+        [HttpPut("{Name}/{LeftRight}")]
+        public IActionResult Put(string Name, string LeftRight, string columnName, string des)
+        {
+
+            if (digitalSignageRepository.UpdateDigitalByColumnName(Name, LeftRight, columnName, des))
+            {
+                return Ok();
+            }
+            return NotFound();
         }
     }
 }

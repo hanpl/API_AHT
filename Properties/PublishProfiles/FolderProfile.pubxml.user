@@ -5,7 +5,7 @@ https://go.microsoft.com/fwlink/?LinkID=208121.
 <Project>
   <PropertyGroup>
     <_PublishTargetUrl>J:\2024\AHT\WebApiAHT\bin\Release\net6.0\publish\</_PublishTargetUrl>
-    <History>True|2024-01-10T15:13:20.1904738Z;True|2024-01-10T15:57:44.9226084+07:00;True|2024-01-10T15:51:14.9820055+07:00;</History>
+    <History>True|2024-01-30T07:53:23.4656913Z;True|2024-01-30T13:31:11.8943488+07:00;True|2024-01-20T13:11:00.8381109+07:00;True|2024-01-20T12:25:13.8509253+07:00;True|2024-01-10T22:13:20.1904738+07:00;True|2024-01-10T15:57:44.9226084+07:00;True|2024-01-10T15:51:14.9820055+07:00;</History>
     <LastFailureDetails />
   </PropertyGroup>
 </Project>

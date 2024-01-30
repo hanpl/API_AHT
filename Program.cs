@@ -14,14 +14,13 @@ builder.Services.AddCors(options =>
     options.AddPolicy("MyCorsPolicy", builder =>
     {
         builder.WithOrigins("http://localhost:3000", "http://localhost:3001", 
-            "http://localhost:5173", "http://localhost:8082", "http://172.17.18.12:8585", 
-            "http://172.17.19.95:8085", "http://172.17.18.12:8586")
+            "http://localhost:5173", "http://localhost:8082", "http://172.17.18.12:8585", "http://172.17.18.12:8282", "http://172.17.18.12:8281",
+            "http://172.17.19.95:8085", "http://172.17.18.12:8586", "https://localhost:7248")
                .AllowAnyMethod()
                .AllowAnyHeader()
                .AllowCredentials();
     });
 });
-//WithOrigins("http://localhost:3000", "http://localhost:3001", "http://localhost:5173", "http://localhost:8082", "http://172.17.18.12:8585", "http://172.17.19.95:8085", "http://172.17.18.12:8586")
 
 var app = builder.Build();
 
