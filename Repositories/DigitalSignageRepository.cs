@@ -78,6 +78,66 @@ namespace AHTAPI.Repositories
             }
         }
         #endregion
+        
+        //Http Get All
+        #region Get All DigitalSignages
+        public List<AHT_DigitalSignage> GetAllDigitalSignalges()
+        {
+            List<AHT_DigitalSignage> aHT_DigitalSignages = new List<AHT_DigitalSignage>();
+            AHT_DigitalSignage aHT_DigitalSignage;
+            var data = getAllDigitalSignalges();
+            foreach (DataRow row in data.Rows)
+            {
+                aHT_DigitalSignage = new AHT_DigitalSignage
+                {
+                    Id = Convert.ToInt32(row["Id"]),
+                    Name = row["Name"].ToString(),
+                    Ip = row["Ip"].ToString(),
+                    Location = row["Location"].ToString(),
+                    Live = row["Live"].ToString(),
+                    Remark = row["Remark"].ToString(),
+                    Status = row["Status"].ToString(),
+                    LeftRight = row["LeftRight"].ToString(),
+                    GateChange = row["GateChange"].ToString(),
+                    Mode = row["Mode"].ToString(),
+                    Auto = row["Auto"].ToString(),
+                    Iata = row["Iata"].ToString(),
+                    NameLineCode = row["NameLineCode"].ToString(),
+                    TimeMcdt = row["TimeMcdt"].ToString(),
+                    ConnectionId = row["ConnectionId"].ToString(),
+                    LiveAuto = row["LiveAuto"].ToString(),
+                };
+                aHT_DigitalSignages.Add(aHT_DigitalSignage);
+            }
+            return aHT_DigitalSignages;
+        }
+        public DataTable getAllDigitalSignalges()
+        {
+            string query = "SELECT * FROM [MSMQFLIGHT].[dbo].[AHT_DigitalSignage] where Name !='SERVER' order by Location ASC";
+            DataTable dataTable = new DataTable();
+            //string connectionString = "Data Source=172.17.2.38;Initial Catalog=MSMQFLIGHT;Persist Security Info=True;User ID=sa;Password=AHT@2019";
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                try
+                {
+                    connection.Open();
+                    using (SqlCommand command = new SqlCommand(query, connection))
+                    {
+                        using (SqlDataReader reader = command.ExecuteReader())
+                        {
+                            dataTable.Load(reader);
+                        }
+                    }
+                    return dataTable;
+                }
+                catch (Exception ex)
+                {
+                    throw;
+                }
+                finally { connection.Close(); }
+            }
+        }
+        #endregion
         //Http Get By Gate Number
         #region Get By Name
         public List<DigitalSignage> GetDigitalByGateNumber( string gate, string leftright)
@@ -99,7 +159,7 @@ namespace AHTAPI.Repositories
                 foreach (DataRow row in data.Rows)
                 {
                     var Mode = (CheckModeEgate(row["LineCode"].ToString(), row["Gate"].ToString()) == true ? "Yes" : "No");
-                    var Live = row["LineCode"].ToString() + "_" + (Mode == "Yes" ? "EGATE" : "NOEGATE") + "_" + row["RemarkNo"].ToString() + "_" + row["LeftRight"].ToString();
+                    var Live = row["LineCode"].ToString() + "_" + (Mode == "Yes" ? "EGATE" : "NOEGATE") + "_" + (((row["RemarkNo"].ToString() == "On time") || (row["RemarkNo"].ToString() == "Delayed")) ? "PRE" : "BOARD") + "_" + row["LeftRight"].ToString();
                     Console.WriteLine("Gate Doing..." + row["Name"].ToString() + " - " + row["LineCode"].ToString() + " - " + row["RemarkNo"].ToString() + " - " + Mode + "  " + Live);
                     if ((row["Live"].ToString() == Live) && (row["Mode"].ToString() == Mode) && (row["Mcdt"].ToString() == row["TimeMcdt"].ToString()))
                     {
