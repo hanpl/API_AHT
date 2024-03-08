@@ -21,5 +21,12 @@ namespace AHTAPI.Controllers
             var data = digitalSignageRepository.GetAllDigitalSignalges();
             return data;
         }
+
+        [HttpGet("{Name}")]
+        public IEnumerable<AHT_DigitalSignage> GetDigitalByName(string Name)
+        {
+            var data = digitalSignageRepository.GetDigitalByName(Name);
+            return data;
+        }
     }
 }
