@@ -23,6 +23,10 @@
         public string? FlightNo { get; set; }
         public string? RemarkNo { get; set; }
         public string? Mcdt { get; set; }
+        public string? City { get; set; }
+        public string? MixCity { get; set; }
+        public string? MixVideos { get; set; }
         public string? ModeNow { get; set; }
+        public List<GateVideos>? ListVideoGate { set; get; }
     }
 }

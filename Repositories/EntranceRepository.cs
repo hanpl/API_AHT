@@ -2,6 +2,7 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore.Metadata.Conventions;
 using System.Data;
+using System.Globalization;
 using System.Linq;
 
 namespace AHTAPI.Repositories
@@ -29,14 +30,21 @@ namespace AHTAPI.Repositories
                     _codeShare = new CodeShare()
                     {
                         LineCode = item["LineCode"].ToString(),
+                        Flight = item["Flight"].ToString(),
                     };
                     codeShares.Add(_codeShare);
                 }
-                    aHT_Entrance = new AHT_Entrance()
-                    {
-                        LineCode = row["LineCode"].ToString()=="VZ" ? "VJ": row["LineCode"].ToString() =="FD"? "AK": row["LineCode"].ToString(),
-                        Code = codeShares
-                    };
+                string chedule = ConvertToFormattedDate(row["Schedule"].ToString());
+                aHT_Entrance = new AHT_Entrance()
+                {
+                    LineCode = row["LineCode"].ToString() == "VZ" ? "VJ" : row["LineCode"].ToString() == "FD" ? "AK" : row["LineCode"].ToString(),
+                    Schedule = chedule,
+                    Flight = row["Flight"].ToString(),
+                    Mcdt = row["Mcdt"].ToString(),
+                    RowFrom = row["RowFrom"].ToString(),
+                    RowTo = row["RowTo"].ToString(),
+                    Code = codeShares
+                };
                 aHT_Entrances.Add(aHT_Entrance);
             }
             return aHT_Entrances.Distinct().ToList();
@@ -44,9 +52,12 @@ namespace AHTAPI.Repositories
 
         public DataTable GetCodeShareById(string id)
         {
-            string query = "select B.LineCode from AHT_FlightInformation AS A JOIN AHT_CodeShare AS B ON A.Id = B.IdFlightInformation "+ 
-                "where A.Mcdt between DATEADD(Mi, -20, getdate()) and DATEADD(hh, 6,getdate()) AND A.Status<>'' and A.Status<> 'Cancelled' " + 
-                "and A.Adi = 'D' and SUBSTRING(A.CheckInCounters, 0, CHARINDEX(',', A.CheckInCounters)) <= 27 and A.Id = '"+id+"' Order by A.Mcdt ASC";
+            //string query = "select B.LineCode from AHT_FlightInformation AS A JOIN AHT_CodeShare AS B ON A.Id = B.IdFlightInformation "+ 
+            //    "where A.Mcdt between DATEADD(Mi, -20, getdate()) and DATEADD(hh, 6,getdate()) AND A.Status<>'' and A.Status<> 'Cancelled' " + 
+            //    "and A.Adi = 'D' and SUBSTRING(A.CheckInCounters, 0, CHARINDEX(',', A.CheckInCounters)) <= 27 and A.Id = '"+id+"' Order by A.Mcdt ASC"
+            string query = "select B.LineCode, CONCAT(B.LineCode, B.Number) AS Flight from AHT_FlightInformation AS A JOIN AHT_CodeShare AS B ON A.Id = B.IdFlightInformation " + 
+            "where A.Mcdt between DATEADD(Mi, -20, getdate()) and DATEADD(hh, 6,getdate()) AND A.Status<>'' and A.Status<> 'Cancelled' " +
+            "and A.Adi = 'D' AND RowFrom NOT LIKE 'M%' AND ISNUMERIC(A.RowFrom) = 1 and A.RowFrom <= 27 and A.Id = '" + id + "' Order by A.Mcdt ASC";
             DataTable dataTable = new DataTable();
             //string connectionString = "Data Source=172.17.2.38;Initial Catalog=MSMQFLIGHT;Persist Security Info=True;User ID=sa;Password=AHT@2019";
             using (SqlConnection connection = new SqlConnection(connectionString))
@@ -72,9 +83,9 @@ namespace AHTAPI.Repositories
         }
         public DataTable GetWorkOrderDetailsFromDb()
         {
-            string query = "select A.LineCode, A.Id from AHT_FlightInformation AS A " +
-                "where A.Mcdt between DATEADD(Mi, -20,getdate()) and DATEADD(hh, 6,getdate()) AND A.Status<>'' and A.Status<> 'Cancelled' "+
-                "and A.Adi = 'D' and SUBSTRING(A.CheckInCounters, 0, CHARINDEX(',', A.CheckInCounters)) <= 27 Order by A.Mcdt ASC";
+            string query = @"SELECT LineCode, CONCAT(LineCode, Number) AS Flight, Mcdt, Schedule, RowFrom, RowTo, Id FROM AHT_FlightInformation 
+                             WHERE Mcdt BETWEEN DATEADD(Mi, -20, GETDATE()) AND DATEADD(hh, 6, GETDATE()) AND Status<> '' AND Status<> 'Cancelled' 
+                             AND Adi = 'D' AND RowFrom NOT LIKE 'M%' AND ISNUMERIC(RowFrom) = 1 AND CAST(RowFrom AS INT) <= 27 ORDER BY Mcdt ASC";
             DataTable dataTable = new DataTable();
             //string connectionString = "Data Source=172.17.2.38;Initial Catalog=MSMQFLIGHT;Persist Security Info=True;User ID=sa;Password=AHT@2019";
             using (SqlConnection connection = new SqlConnection(connectionString))
@@ -111,6 +122,7 @@ namespace AHTAPI.Repositories
                 codeShare = new CodeShare
                 {
                     LineCode = row["LineCode"].ToString(),
+                    Flight = row["Flight"].ToString(),
                 };
             codeShares.Add(codeShare);
             }
@@ -118,9 +130,9 @@ namespace AHTAPI.Repositories
         }
         public DataTable GetHashCodeA()
         {
-            string query = "select B.LineCode from AHT_FlightInformation AS A JOIN AHT_CodeShare AS B ON A.Id = B.IdFlightInformation " +
+            string query = "select B.LineCode, CONCAT(B.LineCode, B.Number) AS Flight from AHT_FlightInformation AS A JOIN AHT_CodeShare AS B ON A.Id = B.IdFlightInformation " +
                 " where A.Mcdt between DATEADD(Mi, -20,getdate()) and DATEADD(hh, 6,getdate()) AND A.Status<>'' and A.Status<> 'Cancelled' " +
-                " and A.Adi = 'D' and SUBSTRING(A.CheckInCounters, 0, CHARINDEX(',', A.CheckInCounters)) >= 27 Order by A.Mcdt ASC";
+                " and A.Adi = 'D' AND RowFrom NOT LIKE 'M%' AND ISNUMERIC(RowFrom) = 1 and A.RowFrom >= 27 Order by A.Mcdt ASC";
             DataTable dataTable = new DataTable();
             //string connectionString = "Data Source=172.17.2.38;Initial Catalog=MSMQFLIGHT;Persist Security Info=True;User ID=sa;Password=AHT@2019";
             using (SqlConnection connection = new SqlConnection(connectionString))
@@ -162,12 +174,19 @@ namespace AHTAPI.Repositories
                     _codeShare = new CodeShare()
                     {
                         LineCode = item["LineCode"].ToString(),
+                        Flight = item["Flight"].ToString(),
                     };
                     codeShares.Add(_codeShare);
                 }
+                string chedule = ConvertToFormattedDate(row["Schedule"].ToString());
                 aHT_Entrance = new AHT_Entrance()
                 {
                     LineCode = row["LineCode"].ToString() == "VZ" ? "VJ" : row["LineCode"].ToString() == "FD" ? "AK" : row["LineCode"].ToString(),
+                    Schedule = chedule,
+                    Flight = row["Flight"].ToString(),
+                    Mcdt = row["Mcdt"].ToString(),
+                    RowFrom = row["RowFrom"].ToString(),
+                    RowTo = row["RowTo"].ToString(),
                     Code = codeShares
                 };
                 aHT_Entrances.Add(aHT_Entrance);
@@ -177,9 +196,9 @@ namespace AHTAPI.Repositories
 
         public DataTable GetCodeShareByIdB(string id)
         {
-            string query = "select B.LineCode from AHT_FlightInformation AS A JOIN AHT_CodeShare AS B ON A.Id = B.IdFlightInformation " +
+            string query = "select B.LineCode, CONCAT(B.LineCode, B.Number) AS Flight from AHT_FlightInformation AS A JOIN AHT_CodeShare AS B ON A.Id = B.IdFlightInformation " +
                 "where A.Mcdt between DATEADD(Mi, -20, getdate()) and DATEADD(hh, 6,getdate()) AND A.Status<>'' and A.Status<> 'Cancelled' " +
-                "and A.Adi = 'D' and SUBSTRING(A.CheckInCounters, 0, CHARINDEX(',', A.CheckInCounters)) >= 27 and A.Id = '" + id + "' Order by A.Mcdt ASC";
+                "and A.Adi = 'D' and A.RowFrom NOT LIKE 'M%' AND ISNUMERIC(A.RowFrom) = 1 and A.RowFrom >= 27 and A.Id = '" + id + "' Order by A.Mcdt ASC";
             DataTable dataTable = new DataTable();
             //string connectionString = "Data Source=172.17.2.38;Initial Catalog=MSMQFLIGHT;Persist Security Info=True;User ID=sa;Password=AHT@2019";
             using (SqlConnection connection = new SqlConnection(connectionString))
@@ -205,9 +224,14 @@ namespace AHTAPI.Repositories
         }
         public DataTable GetWorkOrderDetailsFromDbB()
         {
-            string query = "select A.LineCode, A.Id from AHT_FlightInformation AS A " +
-                "where A.Mcdt between DATEADD(Mi, -20,getdate()) and DATEADD(hh, 6,getdate()) AND A.Status<>'' and A.Status<> 'Cancelled' " +
-                "and A.Adi = 'D' and SUBSTRING(A.CheckInCounters, 0, CHARINDEX(',', A.CheckInCounters)) >= 27 Order by A.Mcdt ASC";
+            string query = "SELECT LineCode,CONCAT(LineCode, Number) AS Flight, Mcdt, Schedule, RowFrom, RowTo, Id FROM AHT_FlightInformation WHERE Mcdt BETWEEN DATEADD(Mi, -20, GETDATE()) AND DATEADD(hh, 6, GETDATE()) " +
+              " AND Status<> '' " +
+              " AND Status<> 'Cancelled' " +
+              " AND Adi = 'D' " +
+              " AND RowFrom NOT LIKE 'M%' " +
+              " AND ISNUMERIC(RowFrom) = 1 " +
+              " AND CAST(RowFrom AS INT) > 27 " +
+              " ORDER BY Mcdt ASC";
             DataTable dataTable = new DataTable();
             //string connectionString = "Data Source=172.17.2.38;Initial Catalog=MSMQFLIGHT;Persist Security Info=True;User ID=sa;Password=AHT@2019";
             using (SqlConnection connection = new SqlConnection(connectionString))
@@ -232,5 +256,14 @@ namespace AHTAPI.Repositories
             }
         }
         #endregion
+
+        private string ConvertToFormattedDate(string dateString)
+        {
+            if (DateTime.TryParse(dateString, out DateTime date))
+            {
+                return date.ToString("dd/MM/yyyy hh:mm:ss tt", CultureInfo.InvariantCulture);
+            }
+            return "";
+        }
     }
 }

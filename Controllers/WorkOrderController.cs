@@ -64,9 +64,6 @@ namespace WOServer.Controllers
                 return CreatedAtAction(nameof(GetProductById), new { id = newProduct.Id }, newProduct);
             }
             return NotFound();
-
-            
-
         }
     }
 }

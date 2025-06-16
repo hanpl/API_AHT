@@ -19,5 +19,7 @@
         public string? ConnectionId { get; set; }
         public string? LiveAuto { get; set; }
         public string? Work { get; set; }
+        public string? City { get; set; }
+        public List<GateVideos>? ListVideoGate { set; get; }
     }
 }

@@ -78,6 +78,17 @@ namespace AHTAPI.Repositories
             var data = getBeltByName(name);
             foreach (DataRow row in data.Rows)
             {
+                List<GateVideos> gateVideos = new List<GateVideos>();
+                var code = GetGateVideosByName(name);
+                GateVideos _gateVideos;
+                foreach (DataRow item in code.Rows)
+                {
+                    _gateVideos = new GateVideos()
+                    {
+                        VideoName = item["VideoName"].ToString(),
+                    };
+                    gateVideos.Add(_gateVideos);
+                }
                 aHT_DigitalSignage = new AHT_DigitalSignage
                 {
                     Id = Convert.ToInt32(row["Id"]),
@@ -96,10 +107,37 @@ namespace AHTAPI.Repositories
                     TimeMcdt = row["TimeMcdt"].ToString(),
                     ConnectionId = row["ConnectionId"].ToString(),
                     LiveAuto = row["LiveAuto"].ToString(),
+                    ListVideoGate = gateVideos,
                 };
                 aHT_DigitalSignages.Add(aHT_DigitalSignage);
             }
             return aHT_DigitalSignages;
+        }
+
+        public DataTable GetGateVideosByName(string name)
+        {
+            string query = "SELECT VideoName FROM [MSMQFLIGHT].[dbo].[AHT_GateVideos] where Name = '" + name + "'";
+            DataTable dataTable = new DataTable();
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                try
+                {
+                    connection.Open();
+                    using (SqlCommand command = new SqlCommand(query, connection))
+                    {
+                        using (SqlDataReader reader = command.ExecuteReader())
+                        {
+                            dataTable.Load(reader);
+                        }
+                    }
+                    return dataTable;
+                }
+                catch (Exception ex)
+                {
+                    throw;
+                }
+                finally { connection.Close(); }
+            }
         }
         public DataTable getBeltByName(string name )
         {

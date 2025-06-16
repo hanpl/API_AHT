@@ -1,0 +1,275 @@
+using AHTAPI.Models;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using System.Numerics;
+using System.Security.AccessControl;
+
+namespace AHTAPI.Repositories
+{
+    public class WaitingTimeRepository
+    {
+        string connectionString;
+        public WaitingTimeRepository(string connectionString)
+        {
+            this.connectionString = connectionString;
+        }
+
+        public async Task<bool> AddDataToDB(WaitingData data)
+        {
+            bool result = true; // Biến để theo dõi trạng thái tổng quát
+            
+            if (data == null) return false;
+            DateTime now = DateTime.Now;
+            // Save Checkin Area data
+            foreach (var checkinArea in data.CheckinArea)
+            {
+                result = await InsertAreaDB(checkinArea.AreaName, checkinArea.AreaId, "checkinArea",checkinArea.AreaWaitingTime, checkinArea.TotalPassengers, now);
+                if (!result) return false;
+                foreach (var flight in checkinArea.FlightWaitingTime)
+                {
+                    if(flight.TotalPassengers > 0)
+                    {
+                        result = await InsertIntoDatabase(checkinArea.AreaId, checkinArea.AreaName, flight.FlightNumber, flight.Airline, flight.WaitingTime, flight.TotalPassengers,
+                                                      flight.ScheduleDate, flight.CounterStart, flight.CounterEnd, flight.FlightCounters , now);
+                        if (!result) return false;
+                    }    
+                    
+
+                }
+            }
+
+            // Save Other Area data
+            foreach (var otherArea in data.OtherArea)
+            {
+                result = await InsertAreaDB(otherArea.AreaName, otherArea.AreaId, "otherArea", otherArea.AreaWaitingTime, otherArea.TotalPassengers, now);
+                if (!result) return false;
+                foreach (var lane in otherArea.LaneWaitingTime)
+                {
+                    if(lane.TotalPassengers > 0)
+                    {
+                        result = await InsertOtherAreaintodatabase(otherArea.AreaId, otherArea.AreaName, lane.LaneId, lane.WaitingTime, lane.TotalPassengers, now);
+                        if (!result) return false;
+                    }
+                    
+                }
+            }
+
+            return result;
+        }
+
+        private async Task<bool> InsertAreaDB(string areaName, string areaId, string areaType, double areaWaitingTime, int areaTotalPassengers, DateTime now)
+        {
+            string query = "INSERT INTO AHT_WaitingTimeArea (AreaName, AreaId, AreaType, AreaWaitingTime, TotalPassengers, CreatedAt) " +
+                           "VALUES (@AreaName, @AreaId, @reaType, @areaWaitingTime, @areaTotalPassengers, @createdAt)";
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                try
+                {
+                    await connection.OpenAsync();
+                    using (SqlCommand command = new SqlCommand(query, connection))
+                    {
+                        // Add parameters
+                        command.Parameters.AddWithValue("@AreaName", areaName ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@AreaId", areaId);
+                        command.Parameters.AddWithValue("@reaType", areaType ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@areaWaitingTime", areaWaitingTime);
+                        command.Parameters.AddWithValue("@areaTotalPassengers", areaTotalPassengers);
+                        command.Parameters.AddWithValue("@CreatedAt", now);
+
+                        // Execute the query
+                        await command.ExecuteNonQueryAsync();
+                    }
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error: {ex.Message}");
+                    return false;
+                }
+                finally
+                {
+                    await connection.CloseAsync();
+                }
+            }
+        }
+
+
+        private async Task<bool> InsertIntoDatabase(string AreaId, string AreaName, string FlightNumber, string Airline, double WaitingTime, int TotalPassengers,
+                                                      string ScheduleDate,string CounterStart, string CounterEnd, List<int> FlightCounters , DateTime now)
+        {
+            string query = @"
+             INSERT INTO AHT_FlightWaitingTime
+             (CheckinAreaId, CheckinAreaName, FlightNumber, Airline, WaitingTime, TotalPassengers, CounterStart, 
+             CounterEnd, ScheduleDate,CheckinCounters, CreatedAt)
+             VALUES
+             (@CheckinAreaId, @CheckinAreaName, @FlightNumber, @Airline, @WaitingTime, @TotalPassengers, @CounterStart, 
+             @CounterEnd, @ScheduleDate,@CheckinCounters, @CreatedAt)";
+
+            string flightCountersString = FlightCounters != null && FlightCounters.Count > 0
+            ? string.Join(",", FlightCounters): null;
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                try
+                {
+                    await connection.OpenAsync();
+                    using (SqlCommand command = new SqlCommand(query, connection))
+                    {
+                        // Add parameters
+                        command.Parameters.AddWithValue("@CheckinAreaId", AreaId );
+                        command.Parameters.AddWithValue("@CheckinAreaName", AreaName);
+                        command.Parameters.AddWithValue("@FlightNumber", FlightNumber ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@Airline", Airline ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@WaitingTime", WaitingTime );
+                        command.Parameters.AddWithValue("@TotalPassengers", TotalPassengers );
+                        command.Parameters.AddWithValue("@ScheduleDate", ScheduleDate ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@CheckinCounters", flightCountersString ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@CounterStart", CounterStart);
+                        command.Parameters.AddWithValue("@CounterEnd", CounterEnd);
+                        command.Parameters.AddWithValue("@CreatedAt", now);
+
+                        // Execute the query
+                        await command.ExecuteNonQueryAsync();
+                    }
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error: {ex.Message}");
+                    return false;
+                }
+                finally
+                {
+                    await connection.CloseAsync();
+                }
+            }
+        }
+
+        private async Task<bool> InsertOtherAreaintodatabase(string AreaId, string AreaName, string LaneId, double WaitingTime, int TotalPassengers, DateTime now)
+        {
+            string query = @"
+             INSERT INTO AHT_LaneWaitingTime
+             (OtherAreaId, OtherAreaName, LaneId, WaitingTime, TotalPassengers, CreatedAt)
+             VALUES
+             (@OtherAreaId, @OtherAreaName, @LaneId, @WaitingTime, @TotalPassengers, @CreatedAt)";
+
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                try
+                {
+                    await connection.OpenAsync();
+                    using (SqlCommand command = new SqlCommand(query, connection))
+                    {
+                        // Add parameters
+                        command.Parameters.AddWithValue("@OtherAreaId", AreaId);
+                        command.Parameters.AddWithValue("@OtherAreaName", AreaName ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@LaneId", LaneId ?? (object)DBNull.Value);
+                        command.Parameters.AddWithValue("@WaitingTime", WaitingTime);
+                        command.Parameters.AddWithValue("@TotalPassengers", TotalPassengers);
+                        command.Parameters.AddWithValue("@CreatedAt", now);
+
+                        // Execute the query
+                        await command.ExecuteNonQueryAsync();
+                    }
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error: {ex.Message}");
+                    return false;
+                }
+                finally
+                {
+                    await connection.CloseAsync();
+                }
+            }
+        }
+
+
+        }
+    }
+
+namespace AHTAPI.Models
+{
+    public class WaitingData
+    {
+        public List<CheckinAreas> CheckinArea { get; set; }
+        public List<OtherAreas> OtherArea { get; set; }
+    }
+
+    public class CheckinAreas
+    {
+        public string AreaName { get; set; }
+        public string AreaId { get; set; }
+        public double AreaWaitingTime { get; set; }
+        public int TotalPassengers { get; set; }
+        public List<FlightWaitingTimes> FlightWaitingTime { get; set; }
+    }
+
+    public class FlightWaitingTimes
+    {
+        public string FlightNumber { get; set; }
+        public string Airline { get; set; }
+        public double WaitingTime { get; set; }
+        public int TotalPassengers { get; set; }
+        public string DepartureTime { get; set; }
+        public List<int> FlightCounters { get; set; }
+        public string CounterStart { get; set; }
+        public string CounterEnd { get; set; }
+        public string ScheduleDate { get; set; }
+    }
+
+    public class OtherAreas
+    {
+        public string AreaName { get; set; }
+        public string AreaId { get; set; }
+        public double AreaWaitingTime { get; set; }
+        public int TotalPassengers { get; set; }
+        public List<LaneWaitingTimes> LaneWaitingTime { get; set; }
+    }
+
+    public class LaneWaitingTimes
+    {
+        public string LaneId { get; set; }
+        public double WaitingTime { get; set; }
+        public int TotalPassengers { get; set; }
+    }
+}using AHTAPI.Models;
+using AHTAPI.Repositories;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+
+namespace AHTAPI.Controllers
+{
+    [Route("api/[controller]")]
+    [ApiController]
+    public class WaitingTimeController : ControllerBase
+    {
+        WaitingTimeRepository waitingTimeRepository;
+        public WaitingTimeController(IConfiguration configuration)
+        {
+            var connectionString = configuration.GetConnectionString("DefaultConnection2");
+            waitingTimeRepository = new WaitingTimeRepository(connectionString);
+        }
+
+
+        [HttpPost]
+        public async Task<IActionResult> Post([FromBody] WaitingData data)
+        {
+            // Gọi phương thức AddDataToDB một cách bất đồng bộ
+            bool result = await waitingTimeRepository.AddDataToDB(data);
+
+            if (result)
+            {
+                return Ok("Data uploaded successfully.");
+            }
+
+            return BadRequest("Invalid data.");
+        }
+    }
+}
+
+
+
+

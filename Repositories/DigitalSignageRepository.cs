@@ -36,6 +36,7 @@ namespace AHTAPI.Repositories
                     Status = row["Status"].ToString(),
                     LeftRight = row["LeftRight"].ToString(),
                     GateChange = row["GateChange"].ToString(),
+                    Work = row["Work"].ToString(),
                     Mode = row["Mode"].ToString(),
                     Auto = row["Auto"].ToString(),
                     Iata = row["Iata"].ToString(),
@@ -99,6 +100,7 @@ namespace AHTAPI.Repositories
                     Status = row["Status"].ToString(),
                     LeftRight = row["LeftRight"].ToString(),
                     GateChange = row["GateChange"].ToString(),
+                    Work = row["Work"].ToString(),
                     Mode = row["Mode"].ToString(),
                     Auto = row["Auto"].ToString(),
                     Iata = row["Iata"].ToString(),
@@ -158,6 +160,7 @@ namespace AHTAPI.Repositories
                     Status = row["Status"].ToString(),
                     LeftRight = row["LeftRight"].ToString(),
                     GateChange = row["GateChange"].ToString(),
+                    Work = row["Work"].ToString(),
                     Mode = row["Mode"].ToString(),
                     Auto = row["Auto"].ToString(),
                     Iata = row["Iata"].ToString(),
@@ -209,9 +212,56 @@ namespace AHTAPI.Repositories
             {
                 if (UpdateGateToAHT(gate, leftright, "AHT", "", "No", "", "", ""))
                 {
-                    return digitalSignages;
+                    var data1 = getOnlyDigitalByGateNumber(gate, leftright);
+                    foreach (DataRow row in data1.Rows)
+                    {
+                        List<GateVideos> gateVideos = new List<GateVideos>();
+                        var code = GetGateVideosByName(gate, leftright);
+                        GateVideos _gateVideos;
+                        foreach (DataRow item in code.Rows)
+                        {
+                            _gateVideos = new GateVideos()
+                            {
+                                VideoName = item["VideoName"].ToString(),
+                            };
+                            gateVideos.Add(_gateVideos);
+                        }
+                        digitalSignage = new DigitalSignage
+                        {
+                            LineCode = "",
+                            FlightNo = "",
+                            RemarkNo = "",
+                            Mcdt = "",
+                            Id = Convert.ToInt32(row["Id"]),
+                            Name = row["Name"].ToString(),
+                            Ip = row["Ip"].ToString(),
+                            Location = row["Location"].ToString(),
+                            Live = row["Live"].ToString(),
+                            Remark = row["Remark"].ToString(),
+                            Status = row["Status"].ToString(),
+                            LeftRight = row["LeftRight"].ToString(),
+                            GateChange = row["GateChange"].ToString(),
+                            Mode = row["Mode"].ToString(),
+                            Auto = row["Auto"].ToString(),
+                            Iata = row["Iata"].ToString(),
+                            NameLineCode = row["NameLineCode"].ToString(),
+                            TimeMcdt = row["TimeMcdt"].ToString(),
+                            ConnectionId = row["ConnectionId"].ToString(),
+                            LiveAuto = row["LiveAuto"].ToString(),
+                            Work = row["Work"].ToString(),
+                            City = row["City"].ToString(),
+                            MixCity = row["MixCity"].ToString(),
+                            MixVideos = row["MixVideos"].ToString(),
+                            ModeNow = "",
+                            ListVideoGate = gateVideos,
+                        };
+                        digitalSignages.Add(digitalSignage);
+                    }
+                        return digitalSignages;
+
                 }
                 return digitalSignages;
+
             }
             else
             {
@@ -231,6 +281,20 @@ namespace AHTAPI.Repositories
                         {
                             Console.WriteLine("UpdateGateToDoing");
                             //Bổ sung code gửi signalr đến  client tương ứng
+                        }
+                    }
+                    List<GateVideos> gateVideos = new List<GateVideos>();
+                    if ((row["Work"].ToString() == "2") || (row["Work"].ToString() == "3"))
+                    {
+                        var code = GetGateVideosByName(row["Name"].ToString(), row["LeftRight"].ToString());
+                        GateVideos _gateVideos;
+                        foreach (DataRow item in code.Rows)
+                        {
+                            _gateVideos = new GateVideos()
+                            {
+                                VideoName = item["VideoName"].ToString(),
+                            };
+                            gateVideos.Add(_gateVideos);
                         }
                     }
                     digitalSignage = new DigitalSignage
@@ -255,7 +319,12 @@ namespace AHTAPI.Repositories
                         TimeMcdt = row["TimeMcdt"].ToString(),
                         ConnectionId = row["ConnectionId"].ToString(),
                         LiveAuto = row["LiveAuto"].ToString(),
+                        Work = row["Work"].ToString(),
+                        City = row["CityTo"].ToString(),
+                        MixCity = row["MixCity"].ToString(),
+                        MixVideos = row["MixVideos"].ToString(),
                         ModeNow = Mode,
+                        ListVideoGate = gateVideos,
                     };
                     digitalSignages.Add(digitalSignage);
                 }
@@ -263,6 +332,33 @@ namespace AHTAPI.Repositories
             }
             
         }
+
+        public DataTable GetGateVideosByName(string name, string location)
+        {
+            string query = "SELECT VideoName FROM [MSMQFLIGHT].[dbo].[AHT_GateVideos] where Name = '"+name+"' and LeftRight = '"+location+"'"; 
+            DataTable dataTable = new DataTable();
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                try
+                {
+                    connection.Open();
+                    using (SqlCommand command = new SqlCommand(query, connection))
+                    {
+                        using (SqlDataReader reader = command.ExecuteReader())
+                        {
+                            dataTable.Load(reader);
+                        }
+                    }
+                    return dataTable;
+                }
+                catch (Exception ex)
+                {
+                    throw;
+                }
+                finally { connection.Close(); }
+            }
+        }
+
         public bool CheckModeEgate(string linecode, string gate)
         {
             var data = GetModeEgate(linecode, gate);
@@ -309,11 +405,36 @@ namespace AHTAPI.Repositories
         }
         public DataTable getDigitalByGateNumber(string gate, string leftright)
         {
-            string query = "select TOP (1) A.LineCode, CONCAT (A.LineCode,A.Number) as FlightNo,A.Remark as RemarkNo, A.Mcdt,A.Gate, B.* " +
-                "from [MSMQFLIGHT].[dbo].[AHT_GateInformation] AS A JOIN AHT_DigitalSignage AS B ON CONCAT ('AHTBG',A.Gate) = B.Name " +
-                "where CONVERT(Datetime ,A.Mcdt) between DATEADD(Mi, -20,getdate()) and DATEADD(Mi, 150,getdate()) " +
-                "AND A.Status<>'' and A.Status<> 'Cancelled'  and A.Adi = 'D' AND B.Name = '" + gate+ "' AND B.LeftRight = '"+leftright+"' AND A.Remark != 'Gate closed' " +
-                "AND A.Remark != 'Departed' Order by CONVERT(Datetime ,A.Mcdt) ASC";
+            string query = "select TOP (1) A.LineCode, CONCAT (A.LineCode,A.Number) as FlightNo,A.Remark as RemarkNo, A.Mcdt, A.Gate, B.*, C.City as CityTo " +
+                "from [MSMQFLIGHT].[dbo].[AHT_GateInformation] AS A JOIN [MSMQFLIGHT].[dbo].[AHT_DigitalSignage] AS B ON CONCAT ('AHTBG',A.Gate) = B.Name " +
+                "JOIN [MSMQFLIGHT].[dbo].[AHT_FlightInformation] AS C ON CONCAT ('AHTBG',C.Gate) = B.Name where CONVERT(Datetime ,A.Mcdt) " +
+                "between DATEADD(Mi, -20,getdate()) and DATEADD(Mi, 150,getdate()) AND A.Status<>'' and A.Status<> 'Cancelled'  and A.Adi = 'D' " +
+                "AND B.Name = '"+gate+"' AND B.LeftRight = '"+leftright+"' AND A.Remark != 'Gate closed' AND A.Remark != 'Departed' Order by CONVERT(Datetime ,A.Mcdt) ASC";
+            DataTable dataTable = new DataTable();
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                try
+                {
+                    connection.Open();
+                    using (SqlCommand command = new SqlCommand(query, connection))
+                    {
+                        using (SqlDataReader reader = command.ExecuteReader())
+                        {
+                            dataTable.Load(reader);
+                        }
+                    }
+                    return dataTable;
+                }
+                catch (Exception ex)
+                {
+                    throw;
+                }
+                finally { connection.Close(); }
+            }
+        }
+        public DataTable getOnlyDigitalByGateNumber(string gate, string leftright)
+        {
+            string query = "select * from [MSMQFLIGHT].[dbo].[AHT_DigitalSignage] where Name = '"+gate+"' AND LeftRight = '"+leftright+"'";
             DataTable dataTable = new DataTable();
             using (SqlConnection connection = new SqlConnection(connectionString))
             {
@@ -428,6 +549,58 @@ namespace AHTAPI.Repositories
                 }
                 finally { connection.Close(); }
             }
+        }
+        #endregion
+
+
+        #region Get Flight for DigSig2
+        public FlightForComple GetFlightByGateNumber(string name)
+        {
+            FlightForComple? flightForComple = null;
+            var data = getConnectionIdClinets(name);
+            foreach (DataRow row in data.Rows)
+            {
+                // Kiểm tra nếu Location trong dòng hiện tại khớp với locationToSearch
+                if ("AHTBG"+row["Gate"]?.ToString() == name)
+                {
+                    flightForComple = new FlightForComple
+                    {
+                        iata = row["LineCode"]?.ToString(),
+                        name = "AHTBG" + row["Gate"]?.ToString(),
+                        nameLineCode = row["LineCode"]?.ToString() + row["Number"]?.ToString(),
+                        remark = row["Remark"]?.ToString(),
+                        timeMcdt = row["Mcdt"]?.ToString()
+                    };
+                    break;
+                }
+            }
+            return flightForComple;
+        }
+
+        public DataTable getConnectionIdClinets(string name)
+        {
+            string query = @"
+             SELECT TOP (1) g.*, e.IsEgate
+             FROM [MSMQFLIGHT].[dbo].[AHT_GateInformation] g
+             LEFT JOIN [MSMQFLIGHT].[dbo].[AHT_EGateForFlight] e 
+             ON g.LineCode = e.Name
+             WHERE ISNULL(Remark, '') NOT IN ('Departed', 'Cancelled', 'Gate closed', '') 
+             AND Gate = REPLACE(@gate, 'AHTBG', '')
+             AND DATEADD(MINUTE, -20, GETDATE()) < TRY_CAST(Mcdt AS DATETIME)
+             ORDER BY TRY_CAST(Mcdt AS datetime) ASC";
+            DataTable dataTable = new DataTable();
+            using (SqlConnection conn = new SqlConnection(connectionString))
+            {
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@gate", name);
+                    conn.Open();
+                    SqlDataAdapter da = new SqlDataAdapter(cmd);
+                    da.Fill(dataTable);
+                }
+            }
+
+            return dataTable;
         }
         #endregion
     }

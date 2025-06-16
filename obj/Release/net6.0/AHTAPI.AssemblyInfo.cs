@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AHTAPI")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c5c1706a1c0623486166f0f1263333f2906fab15")]
 [assembly: System.Reflection.AssemblyProductAttribute("AHTAPI")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AHTAPI")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
